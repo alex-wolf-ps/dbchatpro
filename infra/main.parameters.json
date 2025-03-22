@@ -1,0 +1,61 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "environmentName": {
+        "value": "${AZURE_ENV_NAME}"
+      },
+      "location": {
+        "value": "${AZURE_LOCATION}"
+      },
+      "dbchatProExists": {
+        "value": "${SERVICE_DBCHAT_PRO_RESOURCE_EXISTS=false}"
+      },
+      "dbchatProDefinition": {
+        "value": {
+          "settings": [
+            {
+              "name": "",
+              "value": "${VAR}",
+              "_comment_name": "The name of the environment variable when running in Azure. If empty, ignored.",
+              "_comment_value": "The value to provide. This can be a fixed literal, or an expression like ${VAR} to use the value of 'VAR' from the current environment."
+            },
+            {
+              "name": "",
+              "value": "${VAR_S}",
+              "secret": true,
+              "_comment_name": "The name of the environment variable when running in Azure. If empty, ignored.",
+              "_comment_value": "The value to provide. This can be a fixed literal, or an expression like ${VAR_S} to use the value of 'VAR_S' from the current environment."
+            }
+          ]
+        }
+      },
+      "principalId": {
+        "value": "${AZURE_PRINCIPAL_ID}"
+      },
+      "openAiDeploymentName": {
+        "value": "${AZURE_OPENAI_CHATGPT_DEPLOYMENT=gpt-4o}"
+      },
+      "openAiModelName": {
+        "value": "${AZURE_OPENAI_CHATGPT_MODEL=gpt-4o}"
+      },
+      "openAiModelVersion": {
+        "value": "${AZURE_OPENAI_CHATGPT_MODEL_VERSION=2024-08-06}"
+      },
+      "openAiResourceName": {
+        "value": "${AZURE_OPENAI_RESOURCE}"
+      },
+      "openAiResourceGroupName": {
+        "value": "${AZURE_OPENAI_RESOURCE_GROUP}"
+      },
+      "openAiResourceLocation": {
+        "value": "${AZURE_OPENAI_RESOURCE_LOCATION=eastus}"
+      },
+      "openAiDeploymentCapacity": {
+        "value": "${AZURE_OPENAI_DEPLOYMENT_CAPACITY=3}"
+      },
+      "openAiDeploymentSkuName": {
+        "value": "${AZURE_OPENAI_DEPLOYMENT_SKU_NAME=Standard}"
+      }
+    }
+}

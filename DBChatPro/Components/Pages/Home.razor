@@ -1,0 +1,446 @@
+﻿@page "/"
+@using Azure
+@using Azure.AI.OpenAI
+@using System.Text.Json
+@using System.Text
+@using DBChatPro.Models
+@using Markdig
+@using Microsoft.Extensions.AI
+@inject ISnackbar Snackbar
+@inject IQueryService queryService
+@inject IConnectionService connectionService
+@inject IDatabaseService dataService
+@inject IConfiguration config
+@inject AIService aiService
+@inject IJSRuntime JS
+
+<PageTitle>Home</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Fixed="false">
+    <MudGrid Class="my-2">
+        @if (Connections.Count == 0)
+        {
+            <MudItem xs="6">
+                <p class="ma-6">You haven't connected a database yet. Visit the <a href="/connect-db">database connection</a> page to setup a connection.</p>
+            </MudItem>
+        }
+        else
+        {
+            // Main data query area
+            <MudItem xs="12">
+                <h1>
+                    Chat with your database
+                    <div style="float: right">
+                        <MudIconButton OnClick="@(() => ToggleDrawer(Anchor.End))" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" />
+                    </div>
+                </h1>
+                <MudDivider Class="mb-6"></MudDivider>
+                <MudGrid>
+                    <MudItem xs="8">
+                        <MudGrid>
+                            <MudItem xs="4">
+                                <MudSelect T="string" ValueChanged="LoadDatabase" Value="ActiveConnection.Name"
+                                Label="Select Database">
+                                    @foreach (var db in Connections)
+                                    {
+                                        <MudSelectItem Value="@db.Name" T="string">@db.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <MudSelect @bind-Value="aiPlatform"
+                                Label="AI Platform"
+                                Placeholder="Select AI Platform">
+                                    @if (!string.IsNullOrEmpty(config.GetValue<string>("AZURE_OPENAI_ENDPOINT")))
+                                    {
+                                        <MudSelectItem Value="@("AzureOpenAI")" T="string">Azure OpenAI</MudSelectItem>
+                                    }
+                                    @if (!string.IsNullOrEmpty(config.GetValue<string>("OPENAI_KEY")))
+                                    {
+                                        <MudSelectItem Value="@("OpenAI")" T="string">OpenAI</MudSelectItem>
+                                    }
+                                    @if (!string.IsNullOrEmpty(config.GetValue<string>("OLLAMA_ENDPOINT")))
+                                    {
+                                        <MudSelectItem Value="@("Ollama")" T="string">Ollama</MudSelectItem>
+                                    }
+                                    @if (!string.IsNullOrEmpty(config.GetValue<string>("GITHUB_MODELS_KEY")))
+                                    {
+                                        <MudSelectItem Value="@("GitHubModels")" T="string">GitHub Models</MudSelectItem>
+                                    }
+                                    @if (!string.IsNullOrEmpty(config.GetValue<string>("AWS:Profile")))
+                                    {
+                                        <MudSelectItem Value="@("AWSBedrock")" T="string">AWS Bedrock</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <MudTextField Label="AI Model" @bind-Value="aiModel" Placeholder="AI Model or Deployment Name"></MudTextField>
+                            </MudItem>
+                        </MudGrid>
+                        <EditForm Class="mb-6" Model="FmModel" OnSubmit="() => OnSubmit()">
+                            <div>
+                                <MudTextField @bind-Value="FmModel.Prompt" T="string" Label="Your prompt" Variant="Variant.Text" Lines="5" />
+                            </div>
+                            <div>
+                                <MudButton Class="my-6" Variant="Variant.Filled" ButtonType="ButtonType.Submit" Color="Color.Primary">Submit</MudButton>
+                            </div>
+                        </EditForm>
+                        @if (Loading)
+                        {
+                            <p Class="my-6">@LoadingMessage <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" /></p>
+                        }
+                        @if (!string.IsNullOrEmpty(Error))
+                        {
+                            <p Class="my-6"><b>Error:</b> @Error</p>
+                        }
+                    </MudItem>
+                    <MudItem xs="4">
+                    </MudItem>
+                </MudGrid>
+                <MudTabs KeepPanelsAlive="true" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+                    <MudTabPanel Text="Results">
+                        @if (RowData.Count > 0)
+                        {
+                            <MudTable SortLabel="Sort By" Items="@RowData.Skip(1)" Dense="@dense" Bordered="@bordered" Striped="@striped">
+                                <HeaderContent>
+                                    @foreach (var item in RowData.FirstOrDefault())
+                                    {
+                                        <MudTh>@item</MudTh>
+                                    }
+                                </HeaderContent>
+                                <RowTemplate>
+                                    @foreach (var item in context)
+                                    {
+                                        <MudTd DataLabel="item">@item</MudTd>
+                                    }
+                                </RowTemplate>
+                                <PagerContent>
+                                    <MudTablePager />
+                                </PagerContent>
+                            </MudTable>
+                            <div class="d-flex flex-wrap mt-4">
+                                <MudSwitch @bind-Checked="@dense" Color="Color.Secondary">Dense</MudSwitch>
+                                <MudSwitch @bind-Checked="@striped" Color="Color.Tertiary">Striped</MudSwitch>
+                                <MudSwitch @bind-Checked="@bordered" Color="Color.Warning">Bordered</MudSwitch>
+                                <MudFab @onclick="SaveFavorite" Style="justify-content: flex-end" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Favorite" Label="Favorite" />
+                                <MudButton @onclick="ExportData" Class="mx-6" Variant="Variant.Filled" Color="Color.Info">Export Data</MudButton>
+                            </div>
+                        }
+                        else
+                        {
+                            <p>No data to show.</p>
+                        }
+                    </MudTabPanel>
+                    <MudTabPanel Text="SQL Editor">
+                        <div>
+                            <MudTextField @bind-Value="@Query" Text="@Query" T="string" Label="Edit generated query" Variant="Variant.Text" Lines="5" />
+                        </div>
+                        <div>
+                            <MudButton @onclick="EditQuery" Class="my-6" Variant="Variant.Filled" Color="Color.Primary">Execute</MudButton>
+                        </div>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Insights">
+                        @if (!string.IsNullOrEmpty(Summary))
+                        {
+                            <p Class="my-6">@Summary</p>
+                        }
+                    </MudTabPanel>
+                </MudTabs>
+            </MudItem>
+
+            // Right column tabs
+            <MudItem xs="4">
+                <MudDrawer Open="@open" Anchor="Anchor.Right" ClipMode="DrawerClipMode.Always" Elevation="1" Breakpoint="Breakpoint.SmAndUp" Width="30%" Variant="@DrawerVariant.Persistent">
+                    <MudTabs KeepPanelsAlive="true" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+                        <MudTabPanel Text="Schema">
+                            <p class="mb-6">Browse the tables and columns for <b>@ActiveConnection.Name</b></p>
+                            <MudTreeView T="string">
+                                @foreach (var table in dbSchema.SchemaStructured)
+                                {
+                                    <MudTreeViewItem Value="@table.TableName">
+                                        @foreach (var col in table.Columns)
+                                        {
+                                            <MudTreeViewItem Value="@col" />
+                                        }
+                                    </MudTreeViewItem>
+                                }
+                            </MudTreeView>
+                        </MudTabPanel>
+                        <MudTabPanel class="chat-drawer" Text="Chat">
+                            @if (string.IsNullOrEmpty(config.GetValue<string>("Ollama_ENDPOINT")))
+                            {
+                                <p class="mb-6">Ask the AI model for insights about the query result.</p>
+                                @foreach (var item in ChatHistory)
+                                {
+                                    @if (item.Role == ChatRole.User)
+                                    {
+
+                                        <MudCard Class="my-6">
+                                            <MudCardContent>
+                                                <p>You:</p>
+                                                @item.Text
+                                            </MudCardContent>
+                                        </MudCard>
+                                    }
+                                    else if (item.Role == ChatRole.Assistant)
+                                    {
+                                        <MudCard Class="my-6">
+                                            <MudCardContent>
+                                                <p>AI Assistant:</p>
+                                                @(new MarkupString(Markdown.ToHtml(item.Text)))
+                                            </MudCardContent>
+                                        </MudCard>
+                                    }
+                                }
+                                <EditForm Class="mb-6" Model="FmModel" OnSubmit="() => OnChat()">
+                                    <div>
+                                        <MudTextField @bind-Value="ChatPrompt" T="string" Label="Your prompt" Variant="Variant.Text" Lines="5" />
+                                    </div>
+                                    <div>
+                                        @if (!chatLoading)
+                                        {
+                                            <MudButton Class="my-6" Variant="Variant.Filled" ButtonType="ButtonType.Submit" Color="Color.Primary">Submit</MudButton>
+                                            <MudButton Class="ml-16" Variant="Variant.Filled" ButtonType="ButtonType.Button" OnClick="ClearChat" Color="Color.Primary">Clear</MudButton>
+                                        }
+                                        else
+                                        {
+                                            <MudProgressCircular class="my-6" Color="Color.Primary" Size="Size.Medium" Indeterminate="true" />
+                                        }
+                                    </div>
+                                </EditForm>
+                            } 
+                            else
+                            {
+                                <p>Sorry, the nested chat feature isn't available when Ollama is enabled due to context window and system prompt limitations. :(</p>
+                            }
+                        </MudTabPanel>
+                        <MudTabPanel Text="History">
+                            @if (History.Count > 0)
+                            {
+                                <p class="mb-6">Query history for <b>@ActiveConnection.Name</b></p>
+                                <MudPaper>
+
+                                    @foreach (var item in History)
+                                    {
+                                        <MudList Clickable="true">
+                                            <MudListItem OnClick="() => LoadQuery(item.Query)" Text="@item.Name" />
+                                        </MudList>
+                                    }
+                                </MudPaper>
+
+                            }
+                            else
+                            {
+                                <p class="mb-6">You haven't run any prompts yet.</p>
+                            }
+                        </MudTabPanel>
+                        <MudTabPanel Text="Favorites">
+                            @if (Favorites.Count > 0)
+                            {
+                                <p class="mb-6">Your saved queries for <b>@ActiveConnection.Name</b></p>
+                                <MudPaper>
+
+                                    @foreach (var item in Favorites)
+                                    {
+                                        <MudList Clickable="true">
+                                            <MudListItem OnClick="() => LoadQuery(item.Query)" Text="@item.Name" />
+                                        </MudList>
+                                    }
+                                </MudPaper>
+
+                            }
+                            else
+                            {
+                                <p class="mb-6">You haven't saved any favorites for <b>@ActiveConnection.Name</b> yet.</p>
+                            }
+                        </MudTabPanel>
+                    </MudTabs>
+                </MudDrawer>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+
+@code {
+    // Table styling
+    private bool dense = false;
+    private bool hover = true;
+    private bool striped = true;
+    private bool bordered = true;
+
+    // Form data
+    public FormModel FmModel { get; set; } = new FormModel();
+    public string ChatPrompt = "";
+    public string aiModel = "";
+    public string aiPlatform = "";
+    public string activeDatabase = "";
+
+    // General UI data
+    private bool Loading = false;
+    private bool chatLoading = false;
+    private string LoadingMessage = String.Empty;
+    public AIConnection ActiveConnection { get; set; } = new();
+    public DatabaseSchema dbSchema = new DatabaseSchema() { SchemaRaw = new List<string>(), SchemaStructured = new List<TableSchema>() };
+
+    // Data lists
+    public List<HistoryItem> History { get; set; } = new();
+    public List<HistoryItem> Favorites { get; set; } = new();
+    public List<List<string>> RowData = new();
+    public List<AIConnection> Connections { get; set; } = new();
+    public List<ChatMessage> ChatHistory = new();
+
+    // Prompt & completion data
+    private string Prompt = String.Empty;
+    private string Summary = String.Empty;
+    private string Query = String.Empty;
+    private string Error = String.Empty;
+
+    // UI Drawer stuff
+    bool open = true;
+    Anchor anchor;
+    void ToggleDrawer(Anchor anchor)
+    {
+        open = !open;
+        this.anchor = anchor;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Connections = await connectionService.GetAIConnections();
+        if (Connections.Count > 0)
+        {
+            ActiveConnection = Connections.FirstOrDefault();
+            activeDatabase = ActiveConnection.Name;
+            dbSchema = await dataService.GenerateSchema(ActiveConnection);
+        }
+        else
+        {
+            ActiveConnection = new AIConnection();
+        }
+        History = await queryService.GetQueries(ActiveConnection.Name, QueryType.History);
+        Favorites = await queryService.GetQueries(ActiveConnection.Name, QueryType.Favorite);
+
+    }
+
+    private async Task SaveFavorite()
+    {
+        await queryService.SaveQuery(FmModel.Prompt, ActiveConnection.Name, QueryType.Favorite);
+        Favorites = await queryService.GetQueries(ActiveConnection.Name, QueryType.Favorite);
+        Snackbar.Add("Saved favorite!", Severity.Success);
+    }
+
+    private async Task EditQuery()
+    {
+        RowData = await dataService.GetDataTable(ActiveConnection, Query);
+        Snackbar.Add("Results updated.", Severity.Success);
+    }
+
+    public async Task LoadDatabase(string databaseName)
+    {
+        ActiveConnection = (await connectionService.GetAIConnections()).FirstOrDefault(x => x.Name == databaseName);
+        dbSchema = await dataService.GenerateSchema(ActiveConnection);
+        History = await queryService.GetQueries(ActiveConnection.Name, QueryType.History);
+        Favorites = await queryService.GetQueries(ActiveConnection.Name, QueryType.Favorite);
+        ClearUI();
+    }
+
+    private void ClearUI()
+    {
+        Prompt = String.Empty;
+        Summary = String.Empty;
+        Query = String.Empty;
+        Error = String.Empty;
+        RowData = new List<List<string>>();
+        FmModel = new FormModel();
+    }
+
+    public async Task LoadQuery(string query)
+    {
+        FmModel.Prompt = query;
+        await RunDataChat(query);
+    }
+
+    public async Task OnChat()
+    {
+        chatLoading = true;
+        ChatHistory.Add(new ChatMessage(ChatRole.User, ChatPrompt));
+        ChatPrompt = "";
+
+        var result = await aiService.ChatPrompt(ChatHistory, aiModel, aiPlatform);
+
+        ChatHistory.Add(new ChatMessage(ChatRole.Assistant, result.Messages[0].Text));
+        chatLoading = false;
+    }
+
+    public void ClearChat()
+    {
+        ChatHistory.Clear();
+        ChatHistory.Add(new ChatMessage(ChatRole.System, "You are a helpful AI assistant. Provide helpful insights about the following data: " + JsonSerializer.Serialize(RowData)));
+    }
+
+    public async Task OnSubmit()
+    {
+
+        await RunDataChat(FmModel.Prompt);
+    }
+
+    public async Task RunDataChat(string Prompt)
+    {
+        try
+        {
+            Loading = true;
+            ChatHistory.Clear();
+            LoadingMessage = "Getting the AI query...";
+            var aiResponse = await aiService.GetAISQLQuery(aiModel, aiPlatform, Prompt, dbSchema, ActiveConnection.DatabaseType);
+
+            Query = aiResponse.query;
+            Summary = aiResponse.summary;
+
+            LoadingMessage = "Running the Database query...";
+            RowData = await dataService.GetDataTable(ActiveConnection, aiResponse.query);
+            ChatHistory.Add(new ChatMessage(ChatRole.System, "You are a helpful AI assistant. Provide helpful insights about the following data: " + JsonSerializer.Serialize(RowData)));
+
+            Loading = false;
+            await queryService.SaveQuery(Prompt, ActiveConnection.Name, QueryType.History);
+            History = await queryService.GetQueries(ActiveConnection.Name, QueryType.History);
+            Favorites = await queryService.GetQueries(ActiveConnection.Name, QueryType.Favorite);
+            Error = string.Empty;
+        }
+        catch (Exception e)
+        {
+            Error = e.Message;
+            Loading = false;
+            LoadingMessage = String.Empty;
+        }
+    }
+    private async Task ExportData(MouseEventArgs e)
+    {
+        var csv = new StringBuilder();
+
+        foreach (var row in RowData)
+        {
+            var line = string.Join(",", row);
+            csv.AppendLine(line);
+        }
+
+        var fileName = "export.csv";
+        var byteArray = Encoding.UTF8.GetBytes(csv.ToString());
+
+        var stream2 = new DotNetStreamReference(stream: new MemoryStream(byteArray));
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, stream2);
+    }
+}
+
+<script>
+    window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+      const arrayBuffer = await contentStreamReference.arrayBuffer();
+      const blob = new Blob([arrayBuffer]);
+      const url = URL.createObjectURL(blob);
+      const anchorElement = document.createElement('a');
+      anchorElement.href = url;
+      anchorElement.download = fileName ?? '';
+      anchorElement.click();
+      anchorElement.remove();
+      URL.revokeObjectURL(url);
+    }
+</script>
