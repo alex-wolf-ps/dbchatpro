@@ -1,3 +1,3 @@
 # DBChatPro v1.0.0
 
-Version 1.0.0 of DBChatPro is a legacy or deprecated version and is located in a [separate repo](https://github.com/alex-wolf-ps/dbchatprov1). 
+DBChatPro 1.0.0 is a legacy or deprecated version and is located in a [separate repo found here](https://github.com/alex-wolf-ps/dbchatprov1). Versions 5.0.0 and higher is available in this repo.
