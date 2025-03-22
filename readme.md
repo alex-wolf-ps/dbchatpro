@@ -6,9 +6,9 @@ DBChatPro is an application designed to facilitate seamless communication with y
 
 Before you begin, ensure you have met the following requirements:
 
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download) installed locally
-- One or more connection strings for a compatible database (SQL Server, MySQL, PostgreSQL, Oracle)
-- You have access keys or identity access to one or more of the supported AI platforms:
+- The [.NET 8.0 SDK](https://dotnet.microsoft.com/download) installed locally
+- You have access to one or more connection strings for a compatible database (SQL Server, MySQL, PostgreSQL, Oracle)
+- You have access keys or identity access configured for one or more of the supported AI platforms:
     - Azure OpenAI
     - OpenAI
     - Ollama
@@ -90,3 +90,60 @@ Configure a connection to your database through the UI of the app to begin query
     ```plaintext
     User Id=<your-username>;Password=<your-password>;Data Source=<host>:<port>/<service-name>
     ```
+
+## Azure Developer CLI support
+
+This repository is structured as an Azure Developer CLI template to support automated provisioning and deployment of resources to Azure. 
+
+- **This scenario only works for deploying to Azure and with the Azure OpenAI service.**
+- **This scenario may result in some costs, as Azure resources are provisioned..**
+
+The Azure Developer CLI will automatically provision the following:
+
+- Azure OpenAI Service
+- Azure Container Apps
+- Azure Key Vault
+- Azure Storage
+- Azure Resource Group
+
+It will also automatically deploy your app to a Container Apps instance.
+
+### Set up AZD
+
+1. Install the [Azure Developer CLI](https://aka.ms/azure-dev/install-azd):
+
+    ```sh
+    winget install microsoft.azd
+    ```
+
+    OR
+
+    ```sh
+    curl -fsSL https://aka.ms/install-azd.sh | bash
+    ```
+
+1. Authenticate to Azure using azd:
+
+    ```sh
+    azd auth login
+    ```
+
+### Provision and deploy the app resources
+
+1. In a terminal open to the root of your project:
+
+    ```sh
+    azd init
+    ```
+
+1. Provision and deploy your resources:
+
+    ```sh
+    azd up
+    ```
+
+1. The deployment process may take some time. Once the deployment is complete, you will see the URL where your application is hosted. Open this URL in your browser to access the application.
+
+1. By default the Container App has ingress disabled to keep the app private. You'll need to enable ingress in the container app settings.
+
+For more detailed information on using the Azure Developer CLI, refer to the [official documentation](https://aka.ms/azure-dev/overview).
