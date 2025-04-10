@@ -25,12 +25,12 @@ builder.Services.AddScoped<MySqlDatabaseService>();
 builder.Services.AddScoped<SqlServerDatabaseService>();
 builder.Services.AddScoped<PostgresDatabaseService>();
 builder.Services.AddScoped<OracleDatabaseService>();
-if (builder.Configuration["AWS:Profile"] != null)
+
+if (!string.IsNullOrEmpty(builder.Configuration["AWS:Profile"]))
 {
     builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
     builder.Services.AddAWSService<IAmazonBedrockRuntime>();
 }
-
 
 // For Azure OpenAI using Entra ID
 #region Credential chain

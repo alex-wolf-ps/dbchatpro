@@ -13,9 +13,9 @@ namespace DBChatPro.Services
 {
     // Use this constructor if you're using vanilla OpenAI instead of Azure OpenAI
     // Make sure to update your Program.cs as well
-    //public class OpenAIService(OpenAIClient aiClient)
+    //public class OpenAIService(OpenAIClient aiClient)d
 
-    public class AIService(IConfiguration config, IAmazonBedrockRuntime bedrockClient)
+    public class AIService(IConfiguration config, IServiceProvider serviceProvider)
     {
         IChatClient aiClient;
 
@@ -95,7 +95,8 @@ namespace DBChatPro.Services
                             new AzureKeyCredential(config.GetValue<string>("GITHUB_MODELS_KEY")))
                                 .AsChatClient(aiModel);
                 case "AWSBedrock":
-                    return new AWSBedrockClient(bedrockClient, aiModel); // GH Models just uses the OpenAI Client as well
+                    var bedrockClient = serviceProvider.GetRequiredService<IAmazonBedrockRuntime>();
+                    return new AWSBedrockClient(bedrockClient, aiModel);
             }
 
             return null;
