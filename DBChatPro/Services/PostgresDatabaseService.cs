@@ -57,6 +57,7 @@ namespace DBChatPro
 
             var pairs = conn.ConnectionString.Split(";");
             var database = pairs.Where(x => x.Contains("Database")).FirstOrDefault().Split("=").Last();
+            var schemaName = pairs.Where(x => x.Contains("SearchPath")).DefaultIfEmpty("public").FirstOrDefault().Split("=").Last();
 
             string sqlQuery = $@"SELECT 
                                     table_name, 
@@ -64,18 +65,27 @@ namespace DBChatPro
                                 FROM 
                                     information_schema.columns 
                                 WHERE 
-                                    table_catalog = '{database}'
-                                    AND table_schema = 'public'
+                                    table_catalog = $1
+                                    AND table_schema = $2
                                 ORDER BY 
                                     table_name, 
                                     column_name;";
+
 
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(conn.ConnectionString);
             var dataSource = dataSourceBuilder.Build();
 
             var connection = await dataSource.OpenConnectionAsync();
 
-            await using (var cmd = new NpgsqlCommand(sqlQuery, connection))
+            await using (var cmd = new NpgsqlCommand(sqlQuery, connection)
+            {
+                Parameters =
+                {
+                    new() { Value = database },
+                    new() { Value = schemaName }
+                }
+            })
+
             await using (var reader = await cmd.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())

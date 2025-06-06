@@ -21,7 +21,7 @@ namespace DBChatPro
                     return await msSqlDb.GetDataTable(conn, sqlQuery);
                 case "MYSQL":
                     return await mySqlDb.GetDataTable(conn, sqlQuery);
-                case "POSTGRES":
+                case "POSTGRESQL":
                     return await postgresDb.GetDataTable(conn, sqlQuery);
                 case "ORACLE":
                     return await oracleDb.GetDataTable(conn, sqlQuery);

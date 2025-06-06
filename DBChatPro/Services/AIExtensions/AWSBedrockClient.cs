@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using Amazon.SecurityToken;
 using Amazon.BedrockRuntime;
 using Amazon.BedrockRuntime.Model;
 using Azure;
