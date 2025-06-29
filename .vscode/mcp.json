@@ -1,0 +1,24 @@
+{
+  "inputs": [],
+  "servers": {
+    "DBChatPro": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/DbChatPro.MCPServer/DbChatPro.MCPServer.csproj",
+      ],
+      "env": {
+        "AZURE_OPENAI_ENDPOINT": "",
+        "OPENAI_KEY": "",
+        "OLLAMA_ENDPOINT": "",
+        "GITHUB_MODELS_KEY": "",
+        "AWS_REGION": "",
+        "AWS_PROFILE": "",
+        "DATABASETYPE": "MSSQL",
+        "DATABASECONNECTIONSTRING": "",
+      },
+    }
+  }
+}

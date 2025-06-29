@@ -2,7 +2,6 @@ using Amazon.BedrockRuntime;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using DBChatPro;
-using DBChatPro.Components;
 using DBChatPro.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Azure;
@@ -123,7 +122,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.MapRazorComponents<App>()
+app.MapRazorComponents<DBChatPro.UI.Components.App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
 
