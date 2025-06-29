@@ -8,13 +8,12 @@ using Microsoft.Extensions.AI;
 using OpenAI;
 using System.Text;
 using System.Text.Json;
+using System.ClientModel;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DBChatPro.Services
 {
-    // Use this constructor if you're using vanilla OpenAI instead of Azure OpenAI
-    // Make sure to update your Program.cs as well
-    //public class OpenAIService(OpenAIClient aiClient)d
-
     public class AIService(IConfiguration config, IServiceProvider serviceProvider)
     {
         IChatClient aiClient;
@@ -44,7 +43,7 @@ namespace DBChatPro.Services
             builder.AppendLine(@"In the preceding JSON response, substitute ""your-query"" with the database query used to retrieve the requested data.");
             builder.AppendLine(@"In the preceding JSON response, substitute ""your-summary"" with an explanation of each step you took to create this query in a detailed paragraph.");
             builder.AppendLine($"Only use {databaseType} syntax for database queries.");
-            builder.AppendLine($"Always limit the SQL Query to {maxRows} rows.");
+            // builder.AppendLine($"Always limit the SQL Query to {maxRows} rows.");
             builder.AppendLine("Always include all of the table columns and details.");
 
             // Build the AI chat/prompts
@@ -90,10 +89,9 @@ namespace DBChatPro.Services
                 case "Ollama":
                         return new OllamaChatClient(config.GetValue<string>("OLLAMA_ENDPOINT"), aiModel);
                 case "GitHubModels":
-                    return new ChatCompletionsClient(
-                            endpoint: new Uri("https://models.inference.ai.azure.com"),
-                            new AzureKeyCredential(config.GetValue<string>("GITHUB_MODELS_KEY")))
-                                .AsChatClient(aiModel);
+                    return new OpenAI.Chat.ChatClient($"openai/{aiModel}",
+                            new ApiKeyCredential(config.GetValue<string>("GITHUB_MODELS_KEY")),
+                            new OpenAIClientOptions(){ Endpoint = new Uri("https://models.github.ai/inference") }).AsChatClient();
                 case "AWSBedrock":
                     var bedrockClient = serviceProvider.GetRequiredService<IAmazonBedrockRuntime>();
                     return new AWSBedrockClient(bedrockClient, aiModel);

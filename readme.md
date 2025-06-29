@@ -147,3 +147,63 @@ It will also automatically deploy your app to a Container Apps instance.
 1. By default the Container App has ingress disabled to keep the app private. You'll need to enable ingress in the container app settings.
 
 For more detailed information on using the Azure Developer CLI, refer to the [official documentation](https://aka.ms/azure-dev/overview).
+
+---
+
+## Use the MCPServer Project
+
+The `DbChatPro.MCPServer` project provides a Model Context Protocol (MCP) server interface for DBChatPro, enabling programmatic and tool-based access to database and AI-powered query features. The server exposes the following MCP tools:
+
+    - `GetSqlDataForUserPrompt` - Translate natural language prompts to SQL and executing them
+    - `GetAISqlQuery` - Retrieve the database schema
+    - `GetDatabaseSchema` - Generate SQL queries using AI
+
+### How to Set Up and Run MCPServer
+
+1. **Configure Environment Variables**
+   
+   The MCPServer can connect to the AI platforms and Database you configure in the `env` section of the `mcp.json` file in the `.vscode` folder:
+
+   - AI platform keys (e.g., `AzureOpenAI`, `OpenAI`, `GitHubModels`, `Ollama`, `AWSBedrock`)
+   - `DATABASETYPE` (`MSSQL`, `MYSQL`, `POSTGRESQL`, `ORACLE`)
+   - `DATABASECONNECTIONSTRING` (your database connection string)
+
+2. **Build the MCPServer Project**
+
+   From the root of the repository, run:
+
+   ```sh
+   dotnet build DbChatPro.MCPServer/DbChatPro.MCPServer.csproj
+   ```
+
+3. **Run the MCPServer**
+
+   You can start the server in the background with:
+
+   ```sh
+   dotnet run --project DbChatPro.MCPServer/DbChatPro.MCPServer.csproj
+   ```
+
+   OR 
+
+   For VS Code and GitHub Copilot, open the `.vscode/mcp.json` file and press the `start` button above the server configuration.
+
+   The server will start and listen for MCP protocol requests (typically via stdio or as configured).
+
+4. **Example Usage**
+
+   - To run a natural language query against your database and return the results, use the `GetSqlDataForUserPrompt` tool/method, specifying your prompt, AI model (e.g., `gpt-4o`), and platform (e.g., `AzureOpenAI`)
+    - Sample prompt: "Using DBChatPro with AzureOpenAI and gpt-4o, get me the 10 most recent orders"
+
+   - To get an AI generated SQL Query for the database, use the `GetAISqlQuery` tool/method via your MCP client.
+    - Sample prompt: "Using DBChatPro get an AI generated sql query using GitHub Models and gpt-4.1 for the following prompt: `<your-prompt>`"
+
+   - To get the database schema, use the `GetDatabaseSchema` tool/method via your MCP client.
+    - Sample prompt: "Use DBChatPro to get the schema of the configured database."
+
+5. **Customize the MCP Server**
+
+   - You can extend or modify the server logic in `DbChatPro.MCPServer/DbChatProServer.cs`.
+   - For advanced configuration, review and edit the `mcp.json` file or relevant configuration files.
+
+For more details on the MCP protocol, see the [Model Context Protocol documentation](https://github.com/modelcontext/protocol).
