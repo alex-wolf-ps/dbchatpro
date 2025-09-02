@@ -57,7 +57,7 @@ namespace DBChatPro
         public async Task<DatabaseSchema> GenerateSchema(AIConnection conn)
         {
             var dbSchema = new DatabaseSchema() { SchemaRaw = new List<string>(), SchemaStructured = new List<TableSchema>() };
-            List<KeyValuePair<string, string>> rows = new();
+            List<(string TableName, string ColumnName, string DataType)> rows = new();
 
             using (OracleConnection con = new OracleConnection(conn.ConnectionString))
             {
@@ -65,24 +65,37 @@ namespace DBChatPro
                 {
                     con.Open();
 
-                    command.CommandText = @"SELECT *
+                    command.CommandText = @"SELECT table_name, 
+                           column_name,
+                           CASE 
+                               WHEN data_type IN ('VARCHAR2', 'CHAR', 'NVARCHAR2', 'NCHAR') THEN data_type || '(' || data_length || ')'
+                               WHEN data_type = 'NUMBER' AND data_precision IS NOT NULL THEN 
+                                   CASE WHEN data_scale > 0 THEN data_type || '(' || data_precision || ',' || data_scale || ')'
+                                        ELSE data_type || '(' || data_precision || ')'
+                                   END
+                               ELSE data_type
+                           END as data_type_formatted
                         FROM user_tab_columns
                         ORDER BY table_name, column_id";
 
                     using (OracleDataReader reader = await command.ExecuteReaderAsync())
                     while (await reader.ReadAsync())
                     {
-                        rows.Add(new KeyValuePair<string, string>(reader.GetValue(0).ToString(), reader.GetValue(1).ToString()));
+                        rows.Add((reader.GetValue(0).ToString() ?? "", reader.GetValue(1).ToString() ?? "", reader.GetValue(2).ToString() ?? ""));
                     }
                 }
             }
 
-            var groups = rows.GroupBy(x => x.Key);
+            var groups = rows.GroupBy(x => x.TableName);
 
             foreach (var group in groups)
             {
-                dbSchema.SchemaStructured.Add(new TableSchema() { TableName = group.Key, Columns = group.Select(x => x.Value).ToList() });
-                //use this list
+                var tableSchema = new TableSchema() 
+                { 
+                    TableName = group.Key,
+                    ColumnInfos = group.Select(x => new DBChatPro.Models.ColumnInfo { Name = x.ColumnName, DataType = x.DataType }).ToList()
+                };
+                dbSchema.SchemaStructured.Add(tableSchema);
             }
 
             var textLines = new List<string>();

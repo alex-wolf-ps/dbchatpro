@@ -153,8 +153,24 @@
                     <MudTabs KeepPanelsAlive="true" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
                         <MudTabPanel Text="Schema">
                             <p class="mb-6">Browse the tables and columns for <b>@ActiveConnection.Name</b></p>
+                            
+                            <!-- Filtering inputs -->
+                            <div class="mb-4">
+                                <MudTextField @bind-Value="tableFilter" 
+                                             Label="Filter tables" 
+                                             Variant="Variant.Outlined" 
+                                             Margin="Margin.Dense" 
+                                             Placeholder="Search table names..."
+                                             Class="mb-2" />
+                                <MudTextField @bind-Value="columnFilter" 
+                                             Label="Filter columns" 
+                                             Variant="Variant.Outlined" 
+                                             Margin="Margin.Dense" 
+                                             Placeholder="Search column names..." />
+                            </div>
+                            
                             <MudTreeView T="string">
-                                @foreach (var table in dbSchema.SchemaStructured)
+                                @foreach (var table in GetFilteredTables())
                                 {
                                     <MudTreeViewItem Value="@table.TableName">
                                         @foreach (var col in table.Columns)
@@ -267,6 +283,10 @@
     private bool hover = true;
     private bool striped = true;
     private bool bordered = true;
+
+    // Schema filtering
+    private string tableFilter = "";
+    private string columnFilter = "";
 
     // Form data
     public FormModel FmModel { get; set; } = new FormModel();
@@ -428,6 +448,23 @@
 
         var stream2 = new DotNetStreamReference(stream: new MemoryStream(byteArray));
         await JS.InvokeVoidAsync("downloadFileFromStream", fileName, stream2);
+    }
+
+    private List<TableSchema> GetFilteredTables()
+    {
+        var tables = dbSchema.SchemaStructured;
+        
+        if (!string.IsNullOrEmpty(tableFilter))
+        {
+            tables = tables.Where(t => t.TableName.Contains(tableFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        
+        if (!string.IsNullOrEmpty(columnFilter))
+        {
+            tables = tables.Where(t => t.Columns.Any(c => c.Contains(columnFilter, StringComparison.OrdinalIgnoreCase))).ToList();
+        }
+        
+        return tables;
     }
 }
 

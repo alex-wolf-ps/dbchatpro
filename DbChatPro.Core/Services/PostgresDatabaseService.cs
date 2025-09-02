@@ -53,7 +53,7 @@ namespace DBChatPro
         public async Task<DatabaseSchema> GenerateSchema(AIConnection conn)
         {
             var dbSchema = new DatabaseSchema() { SchemaRaw = new List<string>(), SchemaStructured = new List<TableSchema>() };
-            List<KeyValuePair<string, string>> rows = new();
+            List<(string TableName, string ColumnName, string DataType)> rows = new();
 
             var pairs = conn.ConnectionString.Split(";");
             var database = pairs.Where(x => x.Contains("Database")).FirstOrDefault().Split("=").Last();
@@ -61,7 +61,12 @@ namespace DBChatPro
 
             string sqlQuery = $@"SELECT 
                                     table_name, 
-                                    column_name 
+                                    column_name,
+                                    CASE 
+                                        WHEN character_maximum_length IS NOT NULL THEN data_type || '(' || character_maximum_length::text || ')'
+                                        WHEN numeric_precision IS NOT NULL AND numeric_scale IS NOT NULL THEN data_type || '(' || numeric_precision::text || ',' || numeric_scale::text || ')'
+                                        ELSE data_type
+                                    END as data_type_formatted
                                 FROM 
                                     information_schema.columns 
                                 WHERE 
@@ -69,7 +74,7 @@ namespace DBChatPro
                                     AND table_schema = $2
                                 ORDER BY 
                                     table_name, 
-                                    column_name;";
+                                    ordinal_position;";
 
 
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(conn.ConnectionString);
@@ -90,15 +95,20 @@ namespace DBChatPro
             {
                 while (await reader.ReadAsync())
                 {
-                    rows.Add(new KeyValuePair<string, string>(reader.GetString(0), reader.GetString(1)));
+                    rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
                 }
             }
 
-            var groups = rows.GroupBy(x => x.Key);
+            var groups = rows.GroupBy(x => x.TableName);
 
             foreach (var group in groups)
             {
-                dbSchema.SchemaStructured.Add(new TableSchema() { TableName = group.Key, Columns = group.Select(x => x.Value).ToList() });
+                var tableSchema = new TableSchema() 
+                { 
+                    TableName = group.Key,
+                    ColumnInfos = group.Select(x => new DBChatPro.Models.ColumnInfo { Name = x.ColumnName, DataType = x.DataType }).ToList()
+                };
+                dbSchema.SchemaStructured.Add(tableSchema);
             }
 
             var textLines = new List<string>();

@@ -52,18 +52,24 @@ namespace DBChatPro
         public async Task<DatabaseSchema> GenerateSchema(AIConnection conn)
         {
             var dbSchema = new DatabaseSchema() { SchemaRaw = new List<string>(), SchemaStructured = new List<TableSchema>() };
-            List<KeyValuePair<string, string>> rows = new();
+            List<(string TableName, string ColumnName, string DataType)> rows = new();
 
             var pairs = conn.ConnectionString.Split(";");
             var database = pairs.Where(x => x.Contains("Database")).FirstOrDefault().Split("=").Last();
 
             string sqlQuery = $@"SELECT 
                                     TABLE_NAME, 
-                                    COLUMN_NAME 
+                                    COLUMN_NAME,
+                                    CASE 
+                                        WHEN DATA_TYPE IN ('varchar', 'char', 'text') AND CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN CONCAT(DATA_TYPE, '(', CHARACTER_MAXIMUM_LENGTH, ')')
+                                        WHEN DATA_TYPE IN ('decimal', 'numeric') AND NUMERIC_PRECISION IS NOT NULL THEN CONCAT(DATA_TYPE, '(', NUMERIC_PRECISION, ',', NUMERIC_SCALE, ')')
+                                        ELSE DATA_TYPE
+                                    END as DATA_TYPE_FORMATTED
                                 FROM 
                                     INFORMATION_SCHEMA.COLUMNS 
                                 WHERE 
-                                    TABLE_SCHEMA = '{database}';";
+                                    TABLE_SCHEMA = '{database}'
+                                ORDER BY TABLE_NAME, ORDINAL_POSITION;";
 
             MySqlConnection connection = new MySqlConnection(conn.ConnectionString);
 
@@ -74,15 +80,19 @@ namespace DBChatPro
             {
                 while (await reader.ReadAsync())
                 {
-                    rows.Add(new KeyValuePair<string, string>(reader.GetValue(0).ToString(), reader.GetValue(1).ToString()));
+                    rows.Add((reader.GetValue(0).ToString() ?? "", reader.GetValue(1).ToString() ?? "", reader.GetValue(2).ToString() ?? ""));
                 }
 
-                var groups = rows.GroupBy(x => x.Key);
+                var groups = rows.GroupBy(x => x.TableName);
 
                 foreach (var group in groups)
                 {
-                    dbSchema.SchemaStructured.Add(new TableSchema() { TableName = group.Key, Columns = group.Select(x => x.Value).ToList() });
-                    //use this list
+                    var tableSchema = new TableSchema() 
+                    { 
+                        TableName = group.Key,
+                        ColumnInfos = group.Select(x => new DBChatPro.Models.ColumnInfo { Name = x.ColumnName, DataType = x.DataType }).ToList()
+                    };
+                    dbSchema.SchemaStructured.Add(tableSchema);
                 }
 
                 var textLines = new List<string>();
