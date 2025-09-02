@@ -18,7 +18,7 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
 
     [Parameter] public string Query { get; set; } = string.Empty;
     
@@ -41,10 +41,10 @@
             Name = FavoriteName,
             Tags = Tags
         };
-        MudDialog.Close(DialogResult.Ok(result));
+        MudDialog?.Close(DialogResult.Ok(result));
     }
     
-    void Cancel() => MudDialog.Cancel();
+    void Cancel() => MudDialog?.Cancel();
 
     public class SaveFavoriteResult
     {
