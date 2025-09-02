@@ -27,6 +27,7 @@ builder.Services
     .WithTools<DbChatProServer>();
 
 builder.Services.AddScoped<SqlServerDatabaseService>();
+builder.Services.AddScoped<SnowflakeDatabaseService>();
 builder.Services.AddScoped<AIService>();
 
 var host = builder.Build();
