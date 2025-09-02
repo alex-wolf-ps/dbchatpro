@@ -6,6 +6,7 @@
         MSSQL,
         MYSQL,
         POSTGRESSQL,
-        ORACLE
+        ORACLE,
+        SNOWFLAKE
     }
 }

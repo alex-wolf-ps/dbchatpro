@@ -11,7 +11,8 @@ namespace DBChatPro
         MySqlDatabaseService mySqlDb, 
         SqlServerDatabaseService msSqlDb, 
         PostgresDatabaseService postgresDb, 
-        OracleDatabaseService oracleDb) : IDatabaseService
+        OracleDatabaseService oracleDb,
+        SnowflakeDatabaseService snowflakeDb) : IDatabaseService
     {
         public async Task<List<List<string>>> GetDataTable(AIConnection conn, string sqlQuery)
         {
@@ -25,6 +26,8 @@ namespace DBChatPro
                     return await postgresDb.GetDataTable(conn, sqlQuery);
                 case "ORACLE":
                     return await oracleDb.GetDataTable(conn, sqlQuery);
+                case "SNOWFLAKE":
+                    return await snowflakeDb.GetDataTable(conn, sqlQuery);
             }
 
             return null;
@@ -42,6 +45,8 @@ namespace DBChatPro
                     return await postgresDb.GenerateSchema(conn);
                 case "ORACLE":
                     return await oracleDb.GenerateSchema(conn);
+                case "SNOWFLAKE":
+                    return await snowflakeDb.GenerateSchema(conn);
             }
 
             return new() { SchemaStructured = new List<TableSchema>(), SchemaRaw = new List<string>() };
