@@ -400,3 +400,5 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+dotnet-install.sh
+dotnet.tar.gz
