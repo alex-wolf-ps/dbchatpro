@@ -13,6 +13,7 @@
 @inject IConfiguration config
 @inject AIService aiService
 @inject IJSRuntime JS
+@inject IDialogService DialogService
 
 <PageTitle>Home</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Fixed="false">
@@ -237,16 +238,30 @@
                             @if (Favorites.Count > 0)
                             {
                                 <p class="mb-6">Your saved queries for <b>@ActiveConnection.Name</b></p>
+                                <MudTextField @bind-Value="FavoritesFilter" 
+                                             Label="Filter favorites" 
+                                             Placeholder="Search by name or tag..." 
+                                             Adornment="Adornment.Start" 
+                                             AdornmentIcon="Icons.Material.Filled.Search" 
+                                             Class="mb-4" />
                                 <MudPaper>
-
-                                    @foreach (var item in Favorites)
+                                    @foreach (var item in FilteredFavorites)
                                     {
                                         <MudList Clickable="true">
-                                            <MudListItem OnClick="() => LoadQuery(item.Query)" Text="@item.Name" />
+                                            <MudListItem OnClick="() => LoadQuery(item.Query)">
+                                                <div>
+                                                    <MudText Typo="Typo.body1">@item.Name</MudText>
+                                                    @if (!string.IsNullOrEmpty(item.Tags))
+                                                    {
+                                                        <MudText Typo="Typo.caption" Class="mt-1">
+                                                            Tags: @item.Tags
+                                                        </MudText>
+                                                    }
+                                                </div>
+                                            </MudListItem>
                                         </MudList>
                                     }
                                 </MudPaper>
-
                             }
                             else
                             {
@@ -274,6 +289,16 @@
     public string aiModel = "";
     public string aiPlatform = "";
     public string activeDatabase = "";
+    
+    // Favorites filter
+    public string FavoritesFilter = "";
+    private List<HistoryItem> FilteredFavorites => 
+        string.IsNullOrWhiteSpace(FavoritesFilter) 
+            ? Favorites 
+            : Favorites.Where(f => 
+                f.Name.Contains(FavoritesFilter, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(f.Tags) && f.Tags.Contains(FavoritesFilter, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
 
     // General UI data
     private bool Loading = false;
@@ -324,9 +349,21 @@
 
     private async Task SaveFavorite()
     {
-        await queryService.SaveQuery(FmModel.Prompt, ActiveConnection.Name, QueryType.Favorite);
-        Favorites = await queryService.GetQueries(ActiveConnection.Name, QueryType.Favorite);
-        Snackbar.Add("Saved favorite!", Severity.Success);
+        var parameters = new DialogParameters<SaveFavoriteDialog> 
+        { 
+            { x => x.Query, FmModel.Prompt } 
+        };
+        
+        var dialog = await DialogService.ShowAsync<SaveFavoriteDialog>("Save Favorite", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is SaveFavoriteDialog.SaveFavoriteResult favoriteResult)
+        {
+            await queryService.SaveQuery(FmModel.Prompt, ActiveConnection.Name, QueryType.Favorite, 
+                favoriteResult.Name, favoriteResult.Tags);
+            Favorites = await queryService.GetQueries(ActiveConnection.Name, QueryType.Favorite);
+            Snackbar.Add("Saved favorite!", Severity.Success);
+        }
     }
 
     private async Task EditQuery()
