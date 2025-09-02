@@ -18,7 +18,6 @@ namespace DBChatPro
                 };
                 using var reader = await command.ExecuteReaderAsync();
 
-                int count = 0;
                 bool headersAdded = false;
                 while (await reader.ReadAsync())
                 {
