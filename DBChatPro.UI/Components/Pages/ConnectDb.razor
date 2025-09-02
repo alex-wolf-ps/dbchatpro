@@ -32,6 +32,7 @@
                             <MudSelectItem Value="@("MYSQL")" T="string">MYSQL</MudSelectItem>
                             <MudSelectItem Value="@("POSTGRESQL")" T="string">POSTGRESQL</MudSelectItem>
                             <MudSelectItem Value="@("ORACLE")" T="string">ORACLE</MudSelectItem>
+                            <MudSelectItem Value="@("SNOWFLAKE")" T="string">SNOWFLAKE</MudSelectItem>
                         </MudSelect>
                         <MudTextField @bind-Value="aiConnection.Name" T="string" Label="Connection name" Variant="Variant.Text" />
                         <MudTextField @bind-Value="aiConnection.ConnectionString" T="string" Label="Connection string" Variant="Variant.Text" Lines="5" />
