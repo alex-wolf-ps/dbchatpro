@@ -13,13 +13,19 @@ namespace DBChatPro
 
         public Task SaveQuery(string query, string connectionName, QueryType queryType)
         {
+            return SaveQuery(query, connectionName, queryType, query, string.Empty);
+        }
+
+        public Task SaveQuery(string query, string connectionName, QueryType queryType, string customName, string tags)
+        {
             queries.Add(new HistoryItem()
             {
                 Id = new Random().Next(0, 10000),
                 Query = query,
-                Name = query,
+                Name = customName,
                 ConnectionName = connectionName,
-                QueryType = queryType
+                QueryType = queryType,
+                Tags = tags
             });
 
             return Task.CompletedTask;

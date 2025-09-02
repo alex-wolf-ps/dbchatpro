@@ -8,6 +8,11 @@ namespace DBChatPro
     {
         public async Task SaveQuery(string query, string connectionName, QueryType queryType)
         {
+            await SaveQuery(query, connectionName, queryType, query, string.Empty);
+        }
+
+        public async Task SaveQuery(string query, string connectionName, QueryType queryType, string customName, string tags)
+        {
             TableClient client = tableServiceClient.GetTableClient(
                 tableName: "queries"
             );
@@ -16,9 +21,10 @@ namespace DBChatPro
             {
                 Id = new Random().Next(0, 10000),
                 Query = query,
-                Name = query,
+                Name = customName,
                 ConnectionName = connectionName,
                 QueryType = queryType,
+                Tags = tags,
                 RowKey = Guid.NewGuid().ToString(),
                 PartitionKey = Enum.GetName(queryType),
                 Timestamp = DateTime.Now

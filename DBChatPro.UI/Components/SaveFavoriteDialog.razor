@@ -1,0 +1,54 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-height: 300px; overflow-y: scroll">
+            <MudTextField @bind-Value="FavoriteName" Label="Favorite Name" 
+                         HelperText="Give your favorite query a meaningful name"
+                         Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="Tags" Label="Tags" 
+                         HelperText="Add comma-separated tags (e.g., reporting, analytics, users)"
+                         Variant="Variant.Outlined" Class="mt-4" />
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save Favorite</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public string Query { get; set; } = string.Empty;
+    
+    public string FavoriteName { get; set; } = string.Empty;
+    public string Tags { get; set; } = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        // Default the favorite name to a shortened version of the query
+        if (!string.IsNullOrEmpty(Query))
+        {
+            FavoriteName = Query.Length > 50 ? Query.Substring(0, 50) + "..." : Query;
+        }
+    }
+
+    void Submit()
+    {
+        var result = new SaveFavoriteResult
+        {
+            Name = FavoriteName,
+            Tags = Tags
+        };
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+    
+    void Cancel() => MudDialog.Cancel();
+
+    public class SaveFavoriteResult
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Tags { get; set; } = string.Empty;
+    }
+}
