@@ -24,6 +24,7 @@ builder.Services.AddScoped<MySqlDatabaseService>();
 builder.Services.AddScoped<SqlServerDatabaseService>();
 builder.Services.AddScoped<PostgresDatabaseService>();
 builder.Services.AddScoped<OracleDatabaseService>();
+builder.Services.AddScoped<SnowflakeDatabaseService>();
 
 if (!string.IsNullOrEmpty(builder.Configuration["AWS:Profile"]))
 {
