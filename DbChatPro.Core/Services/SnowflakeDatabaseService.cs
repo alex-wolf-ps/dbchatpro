@@ -56,8 +56,9 @@ namespace DBChatPro
 
             // Parse connection string for database and schema
             var pairs = conn.ConnectionString.Split(";");
-            var database = pairs.Where(x => x.ToUpper().Contains("DB") || x.ToUpper().Contains("DATABASE")).FirstOrDefault()?.Split("=").Last() ?? "PUBLIC";
-            var schema = pairs.Where(x => x.ToUpper().Contains("SCHEMA")).FirstOrDefault()?.Split("=").Last() ?? "PUBLIC";
+            var database = pairs.Where(x => x.ToUpper().Contains("DB=") || x.ToUpper().Contains("DATABASE=")).FirstOrDefault()?.Split("=").Last() ?? 
+                          pairs.Where(x => x.ToUpper().Contains("DB") && x.Contains("=")).FirstOrDefault()?.Split("=").Last() ?? "PUBLIC";
+            var schema = pairs.Where(x => x.ToUpper().Contains("SCHEMA=")).FirstOrDefault()?.Split("=").Last() ?? "PUBLIC";
 
             // Snowflake schema query using INFORMATION_SCHEMA
             string sqlQuery = @"SELECT 
